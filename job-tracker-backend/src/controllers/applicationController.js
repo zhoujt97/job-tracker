@@ -96,5 +96,21 @@ const deleteApplication = (req, res) => {
   db.prepare('DELETE FROM applications WHERE id = ? AND user_id = ?').run(id, req.user.id);
   res.json({ message: 'Application deleted' });
 };
+const getStats = (req, res) => {
+  const statuses = ['Planned', 'Applied', 'Interviewing', 'Offered', 'Rejected', 'Ghosted'];
+  const statusCounts = {};
 
-module.exports = { getApplications, createApplication, updateApplication, deleteApplication };
+  statuses.forEach(status => {
+    const result = db.prepare(
+      'SELECT COUNT(*) as count FROM applications WHERE user_id = ? AND status = ?'
+    ).get(req.user.id, status);
+    statusCounts[status] = result.count;
+  });
+
+  const total = db.prepare(
+    'SELECT COUNT(*) as count FROM applications WHERE user_id = ?'
+  ).get(req.user.id);
+
+  res.json({ statusCounts, total: total.count });
+};
+module.exports = { getApplications, createApplication, updateApplication, deleteApplication, getStats };
