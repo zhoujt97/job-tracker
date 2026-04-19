@@ -6,7 +6,104 @@ const JOB_TYPES = ['Software Engineer', 'Product Design', 'UI Design', 'Research
 const LOCATIONS = ['Remote', 'New York', 'San Francisco', 'Seattle', 'Chicago', 'Los Angeles'];
 const EXPERIENCE_LEVELS = ['Entry Level', 'Mid Level', 'Senior', 'Lead', 'Manager'];
 
-function JobMatches() {
+const CHIP_COLORS = [
+  { bg: '#EFF6FF', text: '#2563EB' },
+  { bg: '#F0FDF4', text: '#16A34A' },
+  { bg: '#FFF7ED', text: '#EA580C' },
+  { bg: '#FAF5FF', text: '#7C3AED' },
+  { bg: '#FFF1F2', text: '#E11D48' },
+];
+
+function CompanyLogo({ company }) {
+  const domain = company?.toLowerCase().replace(/\s+/g, '') + '.com';
+  const [imgError, setImgError] = useState(false);
+  const bgColors = ['#EA4335', '#4285F4', '#34A853', '#FBBC05', '#7C3AED', '#DB2777', '#059669', '#D97706'];
+  const color = bgColors[company?.charCodeAt(0) % bgColors.length];
+
+  if (imgError) {
+    return (
+      <div style={{ ...styles.logoBox, backgroundColor: color }}>
+        <span style={styles.logoLetter}>{company?.charAt(0)?.toUpperCase()}</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`https://logo.clearbit.com/${domain}`}
+      alt={company}
+      style={styles.logoImg}
+      onError={() => setImgError(true)}
+    />
+  );
+}
+
+function ScoreBadge({ score }) {
+  const color = score >= 90 ? '#059669' : score >= 75 ? '#2563EB' : '#D97706';
+  return <span style={{ ...styles.scoreBadge, backgroundColor: color }}>{score}%</span>;
+}
+
+function SkillChip({ skill, index }) {
+  const c = CHIP_COLORS[index % CHIP_COLORS.length];
+  return (
+    <span style={{ ...styles.skillChip, backgroundColor: c.bg, color: c.text, borderColor: c.bg }}>
+      {skill}
+    </span>
+  );
+}
+
+function JobCard({ job }) {
+  return (
+    <div style={styles.jobCard}>
+      <div style={styles.jobHeader}>
+        <CompanyLogo company={job.company} />
+        <div style={styles.jobMeta}>
+          <div style={styles.jobTitleRow}>
+            <h2 style={styles.jobTitle}>{job.title}</h2>
+            <ScoreBadge score={job.matchScore} />
+          </div>
+          <p style={styles.jobSub}>{job.company} · {job.location}</p>
+        </div>
+      </div>
+
+      <div style={styles.tagRow}>
+        {job.skills?.map((skill, i) => <SkillChip key={skill} skill={skill} index={i} />)}
+      </div>
+
+      <div style={styles.divider} />
+
+      <div style={styles.section}>
+        <p style={styles.sectionTitle}>Why This Job is a Match</p>
+        <p style={styles.sectionText}>{job.whyMatch}</p>
+      </div>
+
+      <div style={styles.section}>
+        <p style={styles.sectionTitle}>Required Skills</p>
+        <p style={styles.sectionHint}>Skills that you prefer have been highlighted</p>
+        <div style={styles.tagRow}>
+          {job.requiredSkills?.map((skill, i) => <SkillChip key={skill} skill={skill} index={i} />)}
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <p style={styles.sectionTitle}>Keyword Match</p>
+        <p style={styles.sectionText}>
+          Your resume has{' '}
+          <strong style={{ color: '#111827' }}>
+            {job.keywordMatch?.matched} out of {job.keywordMatch?.total} ({Math.round((job.keywordMatch?.matched / job.keywordMatch?.total) * 100)}%)
+          </strong>{' '}
+          keywords that appear in the job description.
+        </p>
+      </div>
+
+      <div style={styles.actions}>
+        <button style={styles.savedBtn}>Saved</button>
+        <button style={styles.applyBtn}>Apply</button>
+      </div>
+    </div>
+  );
+}
+
+export default function JobMatches() {
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [location, setLocation] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('');
@@ -14,13 +111,10 @@ function JobMatches() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showResumeInput, setShowResumeInput] = useState(false);
+  const [showResume, setShowResume] = useState(false);
 
-  const toggleType = (type) => {
-    setSelectedTypes(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
-  };
+  const toggleType = (type) =>
+    setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
 
   const findMatches = async () => {
     setLoading(true);
@@ -33,7 +127,7 @@ function JobMatches() {
         resumeText,
       });
       setJobs(res.data.jobs);
-    } catch (err) {
+    } catch {
       setError('Failed to find matches. Please try again.');
     } finally {
       setLoading(false);
@@ -46,15 +140,15 @@ function JobMatches() {
       <div style={styles.main}>
         <div style={styles.header}>
           <div>
-            <h1 style={styles.title}>Upload Your Resume</h1>
-            <p style={styles.subtitle}>Get personalized job matches based on your skills and experience.</p>
+            <h1 style={styles.pageTitle}>Upload Your Resume</h1>
+            <p style={styles.pageSubtitle}>Get personalized job matches based on your skills and experience.</p>
           </div>
-          <button style={styles.uploadBtn} onClick={() => setShowResumeInput(!showResumeInput)}>
+          <button style={styles.uploadBtn} onClick={() => setShowResume(!showResume)}>
             + Upload Resume
           </button>
         </div>
 
-        {showResumeInput && (
+        {showResume && (
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>Paste Your Resume</h3>
             <textarea
@@ -68,36 +162,24 @@ function JobMatches() {
 
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>Job Preferences</h3>
-          <p style={styles.label}>Job Type</p>
+          <p style={styles.prefLabel}>Job Type</p>
           <div style={styles.typeRow}>
             {JOB_TYPES.map(type => (
               <span
                 key={type}
-                style={{
-                  ...styles.typeTag,
-                  ...(selectedTypes.includes(type) ? styles.typeTagActive : {}),
-                }}
+                style={{ ...styles.typeTag, ...(selectedTypes.includes(type) ? styles.typeTagActive : {}) }}
                 onClick={() => toggleType(type)}
               >
                 {type}
               </span>
             ))}
           </div>
-
-          <div style={styles.row}>
-            <select
-              style={styles.select}
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-            >
+          <div style={styles.controls}>
+            <select style={styles.select} value={location} onChange={e => setLocation(e.target.value)}>
               <option value="">Select Location</option>
               {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
-            <select
-              style={styles.select}
-              value={experienceLevel}
-              onChange={e => setExperienceLevel(e.target.value)}
-            >
+            <select style={styles.select} value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)}>
               <option value="">Experience Level</option>
               {EXPERIENCE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
@@ -111,49 +193,8 @@ function JobMatches() {
 
         {jobs.length > 0 && (
           <div>
-            <h3 style={styles.matchTitle}>Your Job Matches ({jobs.length})</h3>
-            {jobs.map((job, i) => (
-              <div key={i} style={styles.jobCard}>
-                <div style={styles.jobHeader}>
-                  <div style={styles.jobIcon}>{job.company?.charAt(0)}</div>
-                  <div style={styles.jobInfo}>
-                    <div style={styles.jobTitleRow}>
-                      <h3 style={styles.jobTitle}>{job.title}</h3>
-                      <span style={styles.matchScore}>{job.matchScore}%</span>
-                    </div>
-                    <p style={styles.jobCompany}>{job.company} · {job.location}</p>
-                  </div>
-                </div>
-
-                <div style={styles.skillRow}>
-                  {job.skills?.map(skill => (
-                    <span key={skill} style={styles.skillTag}>{skill}</span>
-                  ))}
-                </div>
-
-                <div style={styles.divider} />
-
-                <p style={styles.sectionTitle}>Why This Job is a Match</p>
-                <p style={styles.sectionText}>{job.whyMatch}</p>
-
-                <p style={styles.sectionTitle}>Required Skills</p>
-                <div style={styles.skillRow}>
-                  {job.requiredSkills?.map(skill => (
-                    <span key={skill} style={styles.skillTag}>{skill}</span>
-                  ))}
-                </div>
-
-                <p style={styles.sectionTitle}>Keyword Match</p>
-                <p style={styles.sectionText}>
-                  Your resume has <strong>{job.keywordMatch?.matched} out of {job.keywordMatch?.total} ({Math.round((job.keywordMatch?.matched / job.keywordMatch?.total) * 100)}%)</strong> keywords that appear in the job description.
-                </p>
-
-                <div style={styles.jobActions}>
-                  <button style={styles.savedBtn}>Saved</button>
-                  <button style={styles.applyBtn}>Apply</button>
-                </div>
-              </div>
-            ))}
+            <h3 style={styles.resultsTitle}>Your Job Matches ({jobs.length})</h3>
+            {jobs.map((job, i) => <JobCard key={i} job={job} />)}
           </div>
         )}
       </div>
@@ -162,40 +203,42 @@ function JobMatches() {
 }
 
 const styles = {
-  layout: { display: 'flex', minHeight: '100vh', backgroundColor: '#f5f5f5' },
-  main: { marginLeft: '220px', padding: '32px', flex: 1 },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' },
-  title: { margin: '0 0 4px', fontSize: '26px' },
-  subtitle: { margin: 0, color: '#888', fontSize: '14px' },
-  uploadBtn: { backgroundColor: '#1a56db', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' },
-  card: { backgroundColor: '#fff', borderRadius: '10px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '16px' },
-  cardTitle: { margin: '0 0 16px', fontSize: '16px', fontWeight: '600' },
-  label: { margin: '0 0 8px', fontSize: '14px', color: '#555' },
-  typeRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' },
-  typeTag: { padding: '6px 16px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontSize: '14px', backgroundColor: '#fff' },
-  typeTagActive: { backgroundColor: '#1a56db', color: '#fff', borderColor: '#1a56db' },
-  row: { display: 'flex', gap: '12px', alignItems: 'center' },
-  select: { padding: '10px 14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' },
-  findBtn: { backgroundColor: '#1a56db', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' },
-  textarea: { width: '100%', height: '150px', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box' },
-  error: { color: 'red', fontSize: '14px', marginBottom: '16px' },
-  matchTitle: { fontSize: '18px', marginBottom: '16px' },
-  jobCard: { backgroundColor: '#fff', borderRadius: '10px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '16px' },
-  jobHeader: { display: 'flex', gap: '16px', marginBottom: '16px' },
-  jobIcon: { width: '48px', height: '48px', borderRadius: '8px', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700' },
-  jobInfo: { flex: 1 },
-  jobTitleRow: { display: 'flex', alignItems: 'center', gap: '12px' },
-  jobTitle: { margin: 0, fontSize: '18px' },
-  matchScore: { backgroundColor: '#059669', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '13px' },
-  jobCompany: { margin: '4px 0 0', color: '#888', fontSize: '14px' },
-  skillRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' },
-  skillTag: { padding: '4px 12px', borderRadius: '20px', border: '1px solid #ddd', fontSize: '13px' },
-  divider: { height: '1px', backgroundColor: '#eee', margin: '16px 0' },
-  sectionTitle: { fontWeight: '600', fontSize: '14px', margin: '0 0 6px' },
-  sectionText: { fontSize: '14px', color: '#555', margin: '0 0 12px' },
-  jobActions: { display: 'flex', gap: '12px', marginTop: '16px' },
-  savedBtn: { padding: '8px 20px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', backgroundColor: '#fff' },
-  applyBtn: { padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#1a56db', color: '#fff', cursor: 'pointer' },
+  layout: { display: 'flex', minHeight: '100vh', backgroundColor: '#F3F4F6' },
+  main: { marginLeft: '220px', padding: '40px 48px', flex: 1, maxWidth: '860px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' },
+  pageTitle: { margin: '0 0 6px', fontSize: '26px', fontWeight: '700', color: '#111827', textAlign: 'left' },
+  pageSubtitle: { margin: 0, fontSize: '14px', color: '#6B7280', textAlign: 'left' },
+  uploadBtn: { backgroundColor: '#2563EB', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' },
+  card: { backgroundColor: '#fff', borderRadius: '14px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '20px' },
+  cardTitle: { margin: '0 0 18px', fontSize: '16px', fontWeight: '600', color: '#111827', textAlign: 'left' },
+  textarea: { width: '100%', height: '160px', padding: '12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box', outline: 'none', color: '#374151' },
+  prefLabel: { margin: '0 0 10px', fontSize: '13px', fontWeight: '600', color: '#374151', textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  typeRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' },
+  typeTag: { padding: '6px 16px', borderRadius: '20px', border: '1px solid #E5E7EB', cursor: 'pointer', fontSize: '13px', color: '#374151', backgroundColor: '#fff' },
+  typeTagActive: { backgroundColor: '#2563EB', color: '#fff', borderColor: '#2563EB' },
+  controls: { display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' },
+  select: { padding: '9px 14px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', backgroundColor: '#fff', outline: 'none' },
+  findBtn: { backgroundColor: '#2563EB', color: '#fff', border: 'none', padding: '10px 28px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+  error: { color: '#DC2626', fontSize: '14px', marginBottom: '16px', textAlign: 'left' },
+  resultsTitle: { fontSize: '17px', fontWeight: '600', color: '#111827', margin: '0 0 14px', textAlign: 'left' },
+  jobCard: { backgroundColor: '#fff', borderRadius: '14px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '16px' },
+  jobHeader: { display: 'flex', gap: '16px', marginBottom: '14px', alignItems: 'center' },
+  logoImg: { width: '48px', height: '48px', borderRadius: '10px', objectFit: 'contain', border: '1px solid #F3F4F6', padding: '4px', flexShrink: 0 },
+  logoBox: { width: '48px', height: '48px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  logoLetter: { color: '#fff', fontSize: '20px', fontWeight: '700' },
+  jobMeta: { flex: 1 },
+  jobTitleRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px', flexWrap: 'wrap' },
+  jobTitle: { margin: 0, fontSize: '18px', fontWeight: '700', color: '#111827', textAlign: 'left' },
+  scoreBadge: { color: '#fff', padding: '3px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', flexShrink: 0 },
+  jobSub: { margin: 0, fontSize: '14px', color: '#6B7280', textAlign: 'left' },
+  tagRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' },
+  skillChip: { padding: '4px 12px', borderRadius: '20px', border: '1px solid', fontSize: '13px', fontWeight: '500' },
+  divider: { height: '1px', backgroundColor: '#F3F4F6', margin: '18px 0' },
+  section: { marginBottom: '18px' },
+  sectionTitle: { margin: '0 0 5px', fontSize: '14px', fontWeight: '600', color: '#111827', textAlign: 'left' },
+  sectionHint: { margin: '0 0 10px', fontSize: '12px', color: '#9CA3AF', textAlign: 'left' },
+  sectionText: { margin: 0, fontSize: '14px', color: '#6B7280', lineHeight: '1.6', textAlign: 'left' },
+  actions: { display: 'flex', gap: '12px', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #F3F4F6' },
+  savedBtn: { padding: '9px 24px', borderRadius: '8px', border: '1px solid #E5E7EB', cursor: 'pointer', backgroundColor: '#fff', fontSize: '14px', color: '#374151', fontWeight: '500' },
+  applyBtn: { padding: '9px 28px', borderRadius: '8px', border: 'none', backgroundColor: '#2563EB', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
 };
-
-export default JobMatches;

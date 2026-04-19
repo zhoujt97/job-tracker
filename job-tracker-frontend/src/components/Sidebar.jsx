@@ -1,14 +1,21 @@
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  const navItems = [
+    { label: 'Home', path: '/' },
+    { label: 'Job Matches', path: '/job-matches' },
+    { label: 'Interview Preparation', path: '/interview-prep' },
+  ];
 
   return (
     <div style={styles.sidebar}>
@@ -18,9 +25,18 @@ function Sidebar() {
           <span style={styles.logoText}>Job Tracker</span>
         </div>
         <nav style={styles.nav}>
-          <div style={styles.navItem} onClick={() => navigate('/')}>Home</div>
-          <div style={styles.navItem} onClick={() => navigate('/job-matches')}>Job Matches</div>
-          <div style={styles.navItem}>Interview Preparation</div>
+          {navItems.map(item => (
+            <div
+              key={item.path}
+              style={{
+                ...styles.navItem,
+                ...(location.pathname === item.path ? styles.navItemActive : {}),
+              }}
+              onClick={() => navigate(item.path)}
+            >
+              {item.label}
+            </div>
+          ))}
         </nav>
       </div>
       <div style={styles.bottom}>
@@ -37,44 +53,17 @@ function Sidebar() {
 }
 
 const styles = {
-  sidebar: {
-    width: '220px',
-    height: '100vh',
-    backgroundColor: '#fff',
-    borderRight: '1px solid #eee',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    padding: '24px 16px',
-    boxSizing: 'border-box',
-    position: 'fixed',
-  },
+  sidebar: { width: '220px', height: '100vh', backgroundColor: '#fff', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 16px', boxSizing: 'border-box', position: 'fixed' },
   top: { display: 'flex', flexDirection: 'column', gap: '32px' },
   logo: { display: 'flex', alignItems: 'center', gap: '10px' },
-  logoIcon: { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#ccc' },
+  logoIcon: { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#1a56db' },
   logoText: { fontWeight: '600', fontSize: '16px' },
   nav: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  navItem: {
-    padding: '10px 12px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    color: '#333',
-  },
+  navItem: { padding: '10px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', color: '#555' },
+  navItemActive: { backgroundColor: '#EFF6FF', color: '#1a56db', fontWeight: '600' },
   bottom: { display: 'flex', flexDirection: 'column', gap: '8px' },
   userRow: { display: 'flex', alignItems: 'center', gap: '10px' },
-  userAvatar: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '50%',
-    backgroundColor: '#c0392b',
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
+  userAvatar: { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#c0392b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600' },
   username: { fontSize: '14px' },
   logout: { fontSize: '14px', cursor: 'pointer', color: '#555', paddingLeft: '4px' },
 };

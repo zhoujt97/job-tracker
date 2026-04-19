@@ -21,20 +21,24 @@ Preferences:
 
 Return a JSON array of 5 job matches. Each job should have:
 - title (string)
-- company (string)
+- company (string): use real well-known company names
 - location (string)
-- matchScore (number 0-100)
-- skills (array of 3-5 strings)
-- whyMatch (string, one sentence)
-- requiredSkills (array of 3-5 strings)
-- keywordMatch (object with matched and total numbers)
+- matchScore (number 0-100): vary between 70-97, do not make them all the same
+- skills (array of 3-5 strings): short skill names
+- whyMatch (string): one specific sentence explaining why this is a good match
+- requiredSkills (array of 3-5 strings): short skill names
+- keywordMatch (object): 
+    - total must be between 8 and 15
+    - matched must be LESS than total (realistic, not 100%)
+    - example: { "matched": 7, "total": 10 } or { "matched": 5, "total": 12 }
+    - never make matched equal to total
 
-Only return the JSON array, no other text.`;
+Only return the JSON array, no other text, no markdown.`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
+      temperature: 0.8,
     });
 
     const content = response.choices[0].message.content;

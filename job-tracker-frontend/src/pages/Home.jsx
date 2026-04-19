@@ -190,8 +190,7 @@ function Home() {
               <h3 style={styles.cardTitle}>Status Breakdown</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value">
                     {pieData.map((entry) => (
                       <Cell key={entry.name} fill={COLORS[entry.name] || '#ccc'} />
                     ))}
