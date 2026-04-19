@@ -10,7 +10,7 @@ function CompanyLogo({ company }) {
   if (imgError) {
     return <div style={{ ...styles.logoBox, backgroundColor: color }}><span style={styles.logoLetter}>{company?.charAt(0)?.toUpperCase()}</span></div>;
   }
-  return <img src={`https://logo.clearbit.com/${domain}`} alt={company} style={styles.logoImg} onError={() => setImgError(true)} />;
+  return <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`} alt={company} style={styles.logoImg} onError={() => setImgError(true)} />;
 }
 
 const DIFFICULTY_COLORS = {

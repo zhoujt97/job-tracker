@@ -21,7 +21,7 @@ Preferences:
 
 Return a JSON array of 5 job matches. Each job should have:
 - title (string)
-- company (string): use real well-known company names
+- company (string): MUST use real well-known tech companies only, such as Google, Microsoft, Apple, Meta, Amazon, Netflix, Spotify, Airbnb, Uber, Stripe, Figma, Notion, Slack, Twitter, LinkedIn, Adobe, Salesforce, Oracle, IBM, Intel
 - location (string)
 - matchScore (number 0-100): vary between 70-97, do not make them all the same
 - skills (array of 3-5 strings): short skill names
