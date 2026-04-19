@@ -18,9 +18,9 @@ function Sidebar() {
           <span style={styles.logoText}>Job Tracker</span>
         </div>
         <nav style={styles.nav}>
-          <div style={styles.navItem}>Home</div>
-          <div style={styles.navItem}>Job Matches</div>
-          <div style={styles.navItem}>Interview Question</div>
+          <div style={styles.navItem} onClick={() => navigate('/')}>Home</div>
+          <div style={styles.navItem} onClick={() => navigate('/job-matches')}>Job Matches</div>
+          <div style={styles.navItem}>Interview Preparation</div>
         </nav>
       </div>
       <div style={styles.bottom}>

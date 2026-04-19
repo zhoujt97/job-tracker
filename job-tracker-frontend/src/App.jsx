@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Analysis from './pages/Analysis';
+import JobMatches from './pages/JobMatches';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -21,6 +22,11 @@ function App() {
       <Route path="/analysis" element={
         <PrivateRoute>
           <Analysis />
+        </PrivateRoute>
+      } />
+      <Route path="/job-matches" element={
+        <PrivateRoute>
+          <JobMatches />
         </PrivateRoute>
       } />
     </Routes>
