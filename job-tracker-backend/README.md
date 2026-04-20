@@ -65,3 +65,7 @@ node -v
 - Confirm backend is running on port `3000`.
 - Frontend API base URL is `http://localhost:3000/api`.
 
+### 5) PDF upload errors on job matches
+- Supported type: PDF only.
+- Max size: 5MB.
+- If PDF is image-only/scanned, text extraction may fail.

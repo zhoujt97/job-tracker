@@ -5,6 +5,7 @@ import api from '../services/api';
 const JOB_TYPES = ['Software Engineer', 'Product Design', 'UI Design', 'Research', 'Data Analyst', 'Marketing'];
 const LOCATIONS = ['Remote', 'New York', 'San Francisco', 'Seattle', 'Chicago', 'Los Angeles'];
 const EXPERIENCE_LEVELS = ['Entry Level', 'Mid Level', 'Senior', 'Lead', 'Manager'];
+const MAX_PDF_SIZE_BYTES = 5 * 1024 * 1024;
 
 const CHIP_COLORS = [
   { bg: '#EFF6FF', text: '#2563EB' },
@@ -108,6 +109,7 @@ export default function JobMatches() {
   const [location, setLocation] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('');
   const [resumeText, setResumeText] = useState('');
+  const [resumeFile, setResumeFile] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -116,19 +118,50 @@ export default function JobMatches() {
   const toggleType = (type) =>
     setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
 
+  const onResumeFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setResumeFile(null);
+      return;
+    }
+
+    const isPdfMime = file.type === 'application/pdf';
+    const isPdfName = file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdfMime && !isPdfName) {
+      setError('Please upload a PDF file.');
+      setResumeFile(null);
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_PDF_SIZE_BYTES) {
+      setError('Resume PDF must be 5MB or smaller.');
+      setResumeFile(null);
+      event.target.value = '';
+      return;
+    }
+
+    setError('');
+    setResumeFile(file);
+  };
+
   const findMatches = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/job-matches/find', {
-        jobType: selectedTypes.join(', '),
-        location,
-        experienceLevel,
-        resumeText,
-      });
+      const formData = new FormData();
+      formData.append('jobType', selectedTypes.join(', '));
+      formData.append('location', location);
+      formData.append('experienceLevel', experienceLevel);
+      formData.append('resumeText', resumeText);
+      if (resumeFile) {
+        formData.append('resume', resumeFile);
+      }
+
+      const res = await api.post('/job-matches/find', formData);
       setJobs(res.data.jobs);
-    } catch {
-      setError('Failed to find matches. Please try again.');
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Failed to find matches. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -150,13 +183,30 @@ export default function JobMatches() {
 
         {showResume && (
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>Paste Your Resume</h3>
+            <h3 style={styles.cardTitle}>Resume Input</h3>
             <textarea
               style={styles.textarea}
               placeholder="Paste your resume text here..."
               value={resumeText}
               onChange={e => setResumeText(e.target.value)}
             />
+            <div style={styles.fileUploadSection}>
+              <label style={styles.fileUploadLabel} htmlFor="resumePdf">
+                Or upload PDF (max 5MB)
+              </label>
+              <input
+                id="resumePdf"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={onResumeFileChange}
+                style={styles.fileInput}
+              />
+              {resumeFile && (
+                <p style={styles.fileSelected}>
+                  Selected: {resumeFile.name} ({(resumeFile.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -212,6 +262,10 @@ const styles = {
   card: { backgroundColor: '#fff', borderRadius: '14px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '20px' },
   cardTitle: { margin: '0 0 18px', fontSize: '16px', fontWeight: '600', color: '#111827', textAlign: 'left' },
   textarea: { width: '100%', height: '160px', padding: '12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box', outline: 'none', color: '#374151' },
+  fileUploadSection: { marginTop: '16px' },
+  fileUploadLabel: { display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#374151', textAlign: 'left' },
+  fileInput: { display: 'block', fontSize: '14px', color: '#374151' },
+  fileSelected: { margin: '8px 0 0', fontSize: '13px', color: '#4B5563', textAlign: 'left' },
   prefLabel: { margin: '0 0 10px', fontSize: '13px', fontWeight: '600', color: '#374151', textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.05em' },
   typeRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' },
   typeTag: { padding: '6px 16px', borderRadius: '20px', border: '1px solid #E5E7EB', cursor: 'pointer', fontSize: '13px', color: '#374151', backgroundColor: '#fff' },
