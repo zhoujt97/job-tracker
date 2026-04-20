@@ -52,7 +52,7 @@ function SkillChip({ skill, index }) {
   );
 }
 
-function JobCard({ job }) {
+function JobCard({ job, onToggleSave, onApply, saving }) {
   return (
     <div style={styles.jobCard}>
       <div style={styles.jobHeader}>
@@ -97,8 +97,10 @@ function JobCard({ job }) {
       </div>
 
       <div style={styles.actions}>
-        <button style={styles.savedBtn}>Saved</button>
-        <button style={styles.applyBtn}>Apply</button>
+        <button style={styles.savedBtn} onClick={() => onToggleSave(job)} disabled={saving}>
+          {saving ? 'Saving...' : job.saved ? 'Saved' : 'Save'}
+        </button>
+        <button style={styles.applyBtn} onClick={() => onApply(job)}>Apply</button>
       </div>
     </div>
   );
@@ -114,6 +116,7 @@ export default function JobMatches() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showResume, setShowResume] = useState(false);
+  const [savingJobKey, setSavingJobKey] = useState('');
 
   const toggleType = (type) =>
     setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
@@ -165,6 +168,50 @@ export default function JobMatches() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onToggleSave = async (job) => {
+    if (!job?.jobKey || savingJobKey) return;
+    setSavingJobKey(job.jobKey);
+    setError('');
+
+    const previousJobs = jobs;
+    const nextSavedValue = !job.saved;
+
+    setJobs((prev) =>
+      prev.map((item) =>
+        item.jobKey === job.jobKey ? { ...item, saved: nextSavedValue } : item
+      )
+    );
+
+    try {
+      if (nextSavedValue) {
+        await api.post('/job-matches/save', {
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          matchScore: job.matchScore,
+          jobUrl: job.jobUrl,
+          skills: job.skills,
+          requiredSkills: job.requiredSkills,
+          whyMatch: job.whyMatch,
+          keywordMatch: job.keywordMatch,
+        });
+      } else {
+        await api.delete(`/job-matches/save/${encodeURIComponent(job.jobKey)}`);
+      }
+    } catch (err) {
+      setJobs(previousJobs);
+      setError(err?.response?.data?.error || 'Failed to update saved job.');
+    } finally {
+      setSavingJobKey('');
+    }
+  };
+
+  const onApply = (job) => {
+    const fallbackQuery = `${job.title || ''} ${job.company || ''} jobs`.trim();
+    const targetUrl = job.jobUrl || `https://www.google.com/search?q=${encodeURIComponent(fallbackQuery)}`;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -244,7 +291,15 @@ export default function JobMatches() {
         {jobs.length > 0 && (
           <div>
             <h3 style={styles.resultsTitle}>Your Job Matches ({jobs.length})</h3>
-            {jobs.map((job, i) => <JobCard key={i} job={job} />)}
+            {jobs.map((job) => (
+              <JobCard
+                key={job.jobKey || `${job.company}-${job.title}-${job.location}`}
+                job={job}
+                onToggleSave={onToggleSave}
+                onApply={onApply}
+                saving={savingJobKey === job.jobKey}
+              />
+            ))}
           </div>
         )}
       </div>

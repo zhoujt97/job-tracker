@@ -26,6 +26,20 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS saved_jobs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    job_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    company TEXT NOT NULL,
+    location TEXT,
+    match_score INTEGER,
+    job_url TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, job_key)
+  );
 `);
 
 console.log('Database connected');
