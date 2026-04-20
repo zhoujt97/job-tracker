@@ -1,19 +1,48 @@
 import { useState } from 'react';
 import api from '../../services/api';
 
+const STATUS_OPTIONS = ['Planned', 'Applied', 'Interviewing', 'Offered', 'Rejected', 'Ghosted'];
+
 function AddApplicationModal({ onClose, onSave }) {
   const [form, setForm] = useState({
     company_name: '', job_title: '', job_description: '',
-    source: '', deadline: '', applied_date: '', priority: '', status: '',
+    source: '', deadline: '', applied_date: '', priority: '', status_sequence: [''],
   });
   const [error, setError] = useState('');
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const updateSequenceStep = (index, value) => {
+    const next = [...form.status_sequence];
+    next[index] = value;
+    setForm({ ...form, status_sequence: next });
+  };
+  const addSequenceStep = () => setForm({ ...form, status_sequence: [...form.status_sequence, ''] });
+  const removeSequenceStep = (index) => {
+    const next = form.status_sequence.filter((_, i) => i !== index);
+    setForm({ ...form, status_sequence: next.length ? next : [''] });
+  };
 
   const handleSubmit = async () => {
     setError('');
     try {
-      await api.post('/applications', form);
+      if (!form.company_name.trim() || !form.job_title.trim() || !form.priority.trim()) {
+        setError('Company name, job title, and priority are required');
+        return;
+      }
+
+      const cleanedSequence = form.status_sequence.filter(Boolean);
+      if (cleanedSequence.length === 0) {
+        setError('Please add at least one status in sequence');
+        return;
+      }
+
+      await api.post('/applications', {
+        ...form,
+        status: cleanedSequence[cleanedSequence.length - 1],
+        status_sequence: cleanedSequence,
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
       onSave();
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong');
@@ -76,15 +105,36 @@ function AddApplicationModal({ onClose, onSave }) {
               <option>Low</option>
             </select>
           </div>
-          <div style={styles.field}>
-            <label style={styles.label}>Status *</label>
-            <select style={styles.input} name="status" value={form.status} onChange={handleChange}>
-              <option value="">Select status</option>
-              {['Planned','Applied','Interviewing','Offered','Rejected','Ghosted'].map(s => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </div>
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Status Sequence *</label>
+          {form.status_sequence.map((step, index) => (
+            <div key={`status-step-${index}`} style={styles.sequenceRow}>
+              <span style={styles.sequenceIndex}>{index + 1}</span>
+              <select
+                style={styles.input}
+                value={step}
+                onChange={(e) => updateSequenceStep(index, e.target.value)}
+              >
+                <option value="">Select status</option>
+                {STATUS_OPTIONS.map(s => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                style={styles.sequenceRemove}
+                onClick={() => removeSequenceStep(index)}
+                disabled={form.status_sequence.length === 1}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button type="button" style={styles.sequenceAdd} onClick={addSequenceStep}>
+            + Add Stage
+          </button>
         </div>
 
         <div style={styles.actions}>
@@ -108,6 +158,10 @@ const styles = {
   label: { display: 'block', marginBottom: '6px', fontSize: '14px' },
   input: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' },
   textarea: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box', height: '100px', resize: 'vertical' },
+  sequenceRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' },
+  sequenceIndex: { width: '18px', fontSize: '13px', color: '#6b7280' },
+  sequenceAdd: { marginTop: '6px', border: '1px solid #d1d5db', backgroundColor: '#fff', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', cursor: 'pointer' },
+  sequenceRemove: { border: '1px solid #d1d5db', backgroundColor: '#fff', borderRadius: '6px', padding: '7px 10px', fontSize: '12px', cursor: 'pointer' },
   actions: { display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' },
   cancelBtn: { padding: '10px 20px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', backgroundColor: '#fff' },
   addBtn: { padding: '10px 24px', borderRadius: '6px', border: 'none', backgroundColor: '#1a56db', color: '#fff', cursor: 'pointer' },

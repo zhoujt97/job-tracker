@@ -7,6 +7,7 @@ import api from '../services/api';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, Sankey } from 'recharts';
 
 const COLORS = {
+  Submitted: '#334155',
   Applied: '#1a56db',
   Interviewing: '#d97706',
   Offered: '#059669',
@@ -15,10 +16,11 @@ const COLORS = {
   Planned: '#8b5cf6',
 };
 
-const STATUS_ORDER = ['Planned', 'Applied', 'Interviewing', 'Offered', 'Rejected', 'Ghosted'];
+const STATUS_ORDER = ['Submitted', 'Planned', 'Applied', 'Interviewing', 'Offered', 'Rejected', 'Ghosted'];
 const SOURCE_COLOR = '#64748b';
 
-const getNodeColor = (nodeName) => COLORS[nodeName] || SOURCE_COLOR;
+const nodeDisplayName = (nodeName) => nodeName.replace(/^Stage \d+:\s*/, '');
+const getNodeColor = (nodeName) => COLORS[nodeDisplayName(nodeName)] || SOURCE_COLOR;
 
 const SankeyTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -27,7 +29,7 @@ const SankeyTooltip = ({ active, payload }) => {
 
   return (
     <div style={styles.tooltipCard}>
-      <p style={styles.tooltipTitle}>{data.source.name}{' -> '}{data.target.name}</p>
+      <p style={styles.tooltipTitle}>{nodeDisplayName(data.source.name)}{' -> '}{nodeDisplayName(data.target.name)}</p>
       <p style={styles.tooltipValue}>{data.value} applications</p>
     </div>
   );
@@ -48,38 +50,31 @@ const SankeyNode = ({ x, y, width, height, payload }) => {
         {valueText}
       </text>
       <text x={labelX} y={labelY + 26} textAnchor={textAnchor} fill="#64748b" fontSize={14} fontWeight={500}>
-        {payload.name}
+        {nodeDisplayName(payload.name)}
       </text>
     </g>
   );
 };
 
-const buildSankeyData = (flows) => {
+const buildStatusSequenceSankeyData = (flows) => {
   if (!flows?.length) return { nodes: [], links: [] };
 
-  const normalizedFlows = flows.map((row) => ({
-    ...row,
-    source: row.source === 'Unknown' ? 'Applications' : row.source,
+  const sortedNodes = [...new Set(flows.flatMap((row) => [row.from, row.to]))].sort((a, b) => {
+    const stageA = Number((a.match(/^Stage (\d+):/) || [])[1] || 0);
+    const stageB = Number((b.match(/^Stage (\d+):/) || [])[1] || 0);
+    if (stageA !== stageB) return stageA - stageB;
+    const nameA = a.replace(/^Stage \d+:\s*/, '');
+    const nameB = b.replace(/^Stage \d+:\s*/, '');
+    return nameA.localeCompare(nameB);
+  });
+
+  const nodes = sortedNodes.map((name) => ({ name, type: name === 'Applications' ? 'source' : 'status' }));
+  const nodeIndex = new Map(nodes.map((node, index) => [node.name, index]));
+  const links = flows.map((row) => ({
+    source: nodeIndex.get(row.from),
+    target: nodeIndex.get(row.to),
+    value: Number(row.value || 0),
   }));
-
-  const sourceNames = [...new Set(normalizedFlows.map((row) => row.source))].sort((a, b) => a.localeCompare(b));
-  const rawStatuses = [...new Set(normalizedFlows.map((row) => row.status))];
-  const statusNames = [
-    ...STATUS_ORDER.filter((status) => rawStatuses.includes(status)),
-    ...rawStatuses.filter((status) => !STATUS_ORDER.includes(status)).sort((a, b) => a.localeCompare(b)),
-  ];
-
-  const nodes = [
-    ...sourceNames.map((name) => ({ name, type: 'source' })),
-    ...statusNames.map((name) => ({ name, type: 'status' })),
-  ];
-
-  const nodeIndex = new Map(nodes.map((node, index) => [`${node.type}:${node.name}`, index]));
-  const links = normalizedFlows.map((row) => ({
-      source: nodeIndex.get(`source:${row.source}`),
-      target: nodeIndex.get(`status:${row.status}`),
-      value: Number(row.value || 0),
-    }));
 
   return { nodes, links };
 };
@@ -97,7 +92,7 @@ function Home() {
   const [order, setOrder] = useState('desc');
   const [showAddModal, setShowAddModal] = useState(false);
   const [stats, setStats] = useState(null);
-  const [sourceStatusFlows, setSourceStatusFlows] = useState([]);
+  const [statusSequenceFlows, setStatusSequenceFlows] = useState([]);
 
   const fetchApplications = async () => {
     try {
@@ -121,10 +116,10 @@ function Home() {
     }
   };
 
-  const fetchSourceStatusFlow = async () => {
+  const fetchStatusSequenceFlow = async () => {
     try {
-      const res = await api.get('/applications/source-status-flow');
-      setSourceStatusFlows(res.data.flows || []);
+      const res = await api.get('/applications/status-sequence-flow');
+      setStatusSequenceFlows(res.data.flows || []);
     } catch (err) {
       console.error(err);
     }
@@ -133,7 +128,7 @@ function Home() {
   useEffect(() => {
     fetchApplications();
     fetchStats();
-    fetchSourceStatusFlow();
+    fetchStatusSequenceFlow();
   }, [page, search, status, sortBy, order]);
 
   const statusCounts = stats?.statusCounts || {
@@ -154,10 +149,10 @@ function Home() {
   const conversionInterview = stats?.statusCounts.Interviewing > 0
     ? ((stats.statusCounts.Offered / stats.statusCounts.Interviewing) * 100).toFixed(1) : 0;
 
-  const sankeyData = useMemo(() => buildSankeyData(sourceStatusFlows), [sourceStatusFlows]);
+  const sankeyData = useMemo(() => buildStatusSequenceSankeyData(statusSequenceFlows), [statusSequenceFlows]);
   const totalFlow = useMemo(
-    () => sourceStatusFlows.reduce((sum, row) => sum + Number(row.value || 0), 0),
-    [sourceStatusFlows]
+    () => statusSequenceFlows.reduce((sum, row) => sum + Number(row.value || 0), 0),
+    [statusSequenceFlows]
   );
 
   return (
@@ -221,7 +216,11 @@ function Home() {
 
             <ApplicationTable
               applications={applications}
-              onRefresh={fetchApplications}
+              onRefresh={() => {
+                fetchApplications();
+                fetchStats();
+                fetchStatusSequenceFlow();
+              }}
               onSort={(field) => {
                 if (sortBy === field) setOrder(order === 'asc' ? 'desc' : 'asc');
                 else { setSortBy(field); setOrder('asc'); }
@@ -289,11 +288,13 @@ function Home() {
 
             <div style={styles.card}>
               <div style={styles.sankeyHeader}>
-                <h3 style={styles.cardTitle}>Source to Status Flow</h3>
+                <div style={styles.sankeyTitleBlock}>
+                  <h3 style={styles.cardTitle}>Status Sequence Flow</h3>
+                </div>
                 <p style={styles.sankeySub}>Total mapped applications: {totalFlow}</p>
               </div>
               {sankeyData.links.length === 0 ? (
-                <div style={styles.emptyState}>No source/status data yet. Add application sources to populate this chart.</div>
+                <div style={styles.emptyState}>No sequence data yet. Add or edit applications with multiple status stages.</div>
               ) : (
                 <ResponsiveContainer width="100%" height={360}>
                   <Sankey
@@ -315,7 +316,12 @@ function Home() {
       {showAddModal && (
         <AddApplicationModal
           onClose={() => setShowAddModal(false)}
-          onSave={() => { setShowAddModal(false); fetchApplications(); fetchStats(); fetchSourceStatusFlow(); }}
+          onSave={() => {
+            setShowAddModal(false);
+            fetchApplications();
+            fetchStats();
+            fetchStatusSequenceFlow();
+          }}
         />
       )}
     </div>
@@ -349,6 +355,7 @@ const styles = {
   metricLabel: { margin: '0 0 8px', color: '#888', fontSize: '13px' },
   metricValue: { margin: 0, fontSize: '28px', fontWeight: '700' },
   sankeyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
+  sankeyTitleBlock: { display: 'flex', flexDirection: 'column', gap: '10px' },
   sankeySub: { margin: 0, color: '#64748b', fontSize: '13px' },
   emptyState: { padding: '28px 12px', color: '#6b7280', fontSize: '14px' },
   tooltipCard: { backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' },

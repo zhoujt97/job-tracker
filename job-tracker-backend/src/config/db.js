@@ -41,6 +41,16 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(user_id, job_key)
   );
+
+  CREATE TABLE IF NOT EXISTS application_status_events (
+    id TEXT PRIMARY KEY,
+    application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    from_status TEXT,
+    to_status TEXT NOT NULL,
+    changed_at TEXT DEFAULT (datetime('now')),
+    note TEXT
+  );
 `);
 
 const applicationColumns = db.prepare('PRAGMA table_info(applications)').all();
@@ -49,6 +59,29 @@ const hasSourceColumn = applicationColumns.some((column) => column.name === 'sou
 if (!hasSourceColumn) {
   db.exec('ALTER TABLE applications ADD COLUMN source TEXT');
 }
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_status_events_user ON application_status_events(user_id);
+  CREATE INDEX IF NOT EXISTS idx_status_events_app ON application_status_events(application_id);
+`);
+
+db.exec(`
+  INSERT INTO application_status_events (id, application_id, user_id, from_status, to_status, changed_at, note)
+  SELECT
+    lower(hex(randomblob(16))),
+    a.id,
+    a.user_id,
+    NULL,
+    a.status,
+    a.created_at,
+    'Backfilled initial status'
+  FROM applications a
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM application_status_events e
+    WHERE e.application_id = a.id
+  );
+`);
 
 console.log('Database connected');
 
