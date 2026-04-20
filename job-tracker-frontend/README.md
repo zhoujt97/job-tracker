@@ -1,45 +1,54 @@
-# Job Tracker
+# Job Tracker Frontend
 
-A web application to track job applications.
+React + Vite client for the Job Tracker app.
 
-## Tech Stack
+## Requirements
 
-- Frontend: React + Vite
-- Backend: Node.js + Express
-- Database: SQLite
-
-## Project Structure
-
-job-tracker-backend/ — Express API server
-job-tracker-frontend/ — React frontend
+- Node.js `24.x` (recommended)
+- npm `11.x` (comes with Node 24)
 
 ## Setup
 
-### Backend
+1. Install dependencies:
 
-cd job-tracker-backend
+```bash
 npm install
+```
 
-Create a .env file:
-PORT=3000
-JWT_SECRET=your_secret_key_here
+2. Start dev server:
 
-Run the server:
+```bash
 npm run dev
+```
 
-Server runs on http://localhost:3000
+Frontend URL: `http://localhost:5173`
 
-### Frontend
+## Backend Dependency
 
-cd job-tracker-frontend
+This frontend calls:
+
+- `http://localhost:3000/api`
+
+So backend must be running at port `3000` before login, signup, or data actions work.
+
+## Environment Troubleshooting
+
+### 1) Frontend loads but API calls fail
+- Cause: backend is not running or not on port `3000`.
+- Fix: start backend and verify `http://localhost:3000`.
+
+### 2) CORS or network errors in browser console
+- Cause: frontend and backend ports do not match expected values.
+- Fix:
+  - frontend on `5173`
+  - backend on `3000`
+  - keep `src/services/api.js` base URL as `http://localhost:3000/api`
+
+### 3) `npm run dev` fails after switching machines/branches
+- Cause: stale `node_modules` built in different OS/Node version.
+- Fix:
+
+```bash
+rm -rf node_modules
 npm install
-npm run dev
-
-Frontend runs on http://localhost:5173
-
-## Features
-
-- Signup and login
-- Add, edit, delete job applications
-- Track status: Planned, Applied, Interviewing, Offered, Rejected, Ghosted
-- Search, filter, sort, pagination
+```

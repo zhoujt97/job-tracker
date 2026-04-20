@@ -1,8 +1,12 @@
 const OpenAI = require('openai');
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const generateQuestions = async (req, res) => {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ error: 'OPENAI_API_KEY is not set' });
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const { jobTitle, company } = req.body;
 
     const prompt = `You are an interview coach. Generate 6 realistic interview questions for a ${jobTitle} position at ${company}.

@@ -1,11 +1,15 @@
 const OpenAI = require('openai');
 const multer = require('multer');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ storage: multer.memoryStorage() });
 
 const findMatches = async (req, res) => {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ error: 'OPENAI_API_KEY is not set' });
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const { jobType, location, experienceLevel } = req.body;
     const resumeText = req.body.resumeText || '';
 
