@@ -5,7 +5,7 @@ const getApplications = (req, res) => {
   const { page = 1, limit = 10, search, status, sortBy = 'created_at', order = 'asc' } = req.query;
   const offset = (page - 1) * limit;
 
-  const allowedSort = ['deadline', 'applied_date', 'company_name', 'priority', 'created_at', 'status'];
+  const allowedSort = ['deadline', 'applied_date', 'company_name', 'priority', 'created_at', 'status', 'source'];
   const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'created_at';
   const safeOrder = order === 'desc' ? 'DESC' : 'ASC';
 
@@ -39,7 +39,7 @@ const getApplications = (req, res) => {
 };
 
 const createApplication = (req, res) => {
-  const { company_name, job_title, job_description, status, priority, deadline, applied_date } = req.body;
+  const { company_name, job_title, source, job_description, status, priority, deadline, applied_date } = req.body;
 
   if (!company_name || !job_title || !status || !priority) {
     return res.status(400).json({ error: 'company_name, job_title, status and priority are required' });
@@ -48,9 +48,9 @@ const createApplication = (req, res) => {
   const id = uuidv4();
 
   db.prepare(`
-    INSERT INTO applications (id, user_id, company_name, job_title, job_description, status, priority, deadline, applied_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, req.user.id, company_name, job_title, job_description, status, priority, deadline, applied_date);
+    INSERT INTO applications (id, user_id, company_name, job_title, source, job_description, status, priority, deadline, applied_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, req.user.id, company_name, job_title, source, job_description, status, priority, deadline, applied_date);
 
   const application = db.prepare('SELECT * FROM applications WHERE id = ?').get(id);
   res.status(201).json(application);
@@ -58,7 +58,7 @@ const createApplication = (req, res) => {
 
 const updateApplication = (req, res) => {
   const { id } = req.params;
-  const { company_name, job_title, job_description, status, priority, deadline, applied_date } = req.body;
+  const { company_name, job_title, source, job_description, status, priority, deadline, applied_date } = req.body;
 
   const application = db.prepare('SELECT * FROM applications WHERE id = ? AND user_id = ?').get(id, req.user.id);
   if (!application) {
@@ -67,11 +67,12 @@ const updateApplication = (req, res) => {
 
   db.prepare(`
     UPDATE applications
-    SET company_name = ?, job_title = ?, job_description = ?, status = ?, priority = ?, deadline = ?, applied_date = ?, updated_at = datetime('now')
+    SET company_name = ?, job_title = ?, source = ?, job_description = ?, status = ?, priority = ?, deadline = ?, applied_date = ?, updated_at = datetime('now')
     WHERE id = ? AND user_id = ?
   `).run(
     company_name ?? application.company_name,
     job_title ?? application.job_title,
+    source ?? application.source,
     job_description ?? application.job_description,
     status ?? application.status,
     priority ?? application.priority,
@@ -113,4 +114,20 @@ const getStats = (req, res) => {
 
   res.json({ statusCounts, total: total.count });
 };
-module.exports = { getApplications, createApplication, updateApplication, deleteApplication, getStats };
+
+const getSourceStatusFlow = (req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      COALESCE(NULLIF(TRIM(source), ''), 'Unknown') AS source,
+      status,
+      COUNT(*) AS value
+    FROM applications
+    WHERE user_id = ?
+    GROUP BY COALESCE(NULLIF(TRIM(source), ''), 'Unknown'), status
+    ORDER BY value DESC
+  `).all(req.user.id);
+
+  res.json({ flows: rows });
+};
+
+module.exports = { getApplications, createApplication, updateApplication, deleteApplication, getStats, getSourceStatusFlow };

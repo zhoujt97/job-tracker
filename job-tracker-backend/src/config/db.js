@@ -18,6 +18,7 @@ db.exec(`
     user_id TEXT REFERENCES users(id),
     company_name TEXT NOT NULL,
     job_title TEXT NOT NULL,
+    source TEXT,
     job_description TEXT,
     status TEXT CHECK(status IN ('Planned','Applied','Interviewing','Offered','Rejected','Ghosted')),
     priority TEXT CHECK(priority IN ('High','Medium','Low')),
@@ -41,6 +42,13 @@ db.exec(`
     UNIQUE(user_id, job_key)
   );
 `);
+
+const applicationColumns = db.prepare('PRAGMA table_info(applications)').all();
+const hasSourceColumn = applicationColumns.some((column) => column.name === 'source');
+
+if (!hasSourceColumn) {
+  db.exec('ALTER TABLE applications ADD COLUMN source TEXT');
+}
 
 console.log('Database connected');
 

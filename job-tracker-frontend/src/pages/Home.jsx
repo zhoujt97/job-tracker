@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import ApplicationTable from '../components/ApplicationTable';
 import AddApplicationModal from '../components/modals/AddApplicationModal';
 import api from '../services/api';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, Sankey } from 'recharts';
 
 const COLORS = {
   Applied: '#1a56db',
@@ -13,6 +13,75 @@ const COLORS = {
   Rejected: '#dc2626',
   Ghosted: '#6b7280',
   Planned: '#8b5cf6',
+};
+
+const STATUS_ORDER = ['Planned', 'Applied', 'Interviewing', 'Offered', 'Rejected', 'Ghosted'];
+const SOURCE_COLOR = '#64748b';
+
+const getNodeColor = (nodeName) => COLORS[nodeName] || SOURCE_COLOR;
+
+const SankeyTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const data = payload[0]?.payload;
+  if (!data?.source?.name || !data?.target?.name) return null;
+
+  return (
+    <div style={styles.tooltipCard}>
+      <p style={styles.tooltipTitle}>{data.source.name}{' -> '}{data.target.name}</p>
+      <p style={styles.tooltipValue}>{data.value} applications</p>
+    </div>
+  );
+};
+
+const SankeyNode = ({ x, y, width, height, payload }) => {
+  const fill = getNodeColor(payload.name);
+  const isSourceNode = payload.type === 'source' || payload.depth === 0;
+  const labelX = isSourceNode ? x - 16 : x + width + 16;
+  const textAnchor = isSourceNode ? 'end' : 'start';
+  const labelY = y + height / 2;
+  const valueText = Math.round(Number(payload.fixedValue ?? payload.value ?? 0));
+
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={0.9} rx={2} />
+      <text x={labelX} y={labelY - 8} textAnchor={textAnchor} fill="#111827" fontSize={24} fontWeight={600}>
+        {valueText}
+      </text>
+      <text x={labelX} y={labelY + 26} textAnchor={textAnchor} fill="#64748b" fontSize={14} fontWeight={500}>
+        {payload.name}
+      </text>
+    </g>
+  );
+};
+
+const buildSankeyData = (flows) => {
+  if (!flows?.length) return { nodes: [], links: [] };
+
+  const normalizedFlows = flows.map((row) => ({
+    ...row,
+    source: row.source === 'Unknown' ? 'Applications' : row.source,
+  }));
+
+  const sourceNames = [...new Set(normalizedFlows.map((row) => row.source))].sort((a, b) => a.localeCompare(b));
+  const rawStatuses = [...new Set(normalizedFlows.map((row) => row.status))];
+  const statusNames = [
+    ...STATUS_ORDER.filter((status) => rawStatuses.includes(status)),
+    ...rawStatuses.filter((status) => !STATUS_ORDER.includes(status)).sort((a, b) => a.localeCompare(b)),
+  ];
+
+  const nodes = [
+    ...sourceNames.map((name) => ({ name, type: 'source' })),
+    ...statusNames.map((name) => ({ name, type: 'status' })),
+  ];
+
+  const nodeIndex = new Map(nodes.map((node, index) => [`${node.type}:${node.name}`, index]));
+  const links = normalizedFlows.map((row) => ({
+      source: nodeIndex.get(`source:${row.source}`),
+      target: nodeIndex.get(`status:${row.status}`),
+      value: Number(row.value || 0),
+    }));
+
+  return { nodes, links };
 };
 
 function Home() {
@@ -28,6 +97,7 @@ function Home() {
   const [order, setOrder] = useState('desc');
   const [showAddModal, setShowAddModal] = useState(false);
   const [stats, setStats] = useState(null);
+  const [sourceStatusFlows, setSourceStatusFlows] = useState([]);
 
   const fetchApplications = async () => {
     try {
@@ -51,9 +121,19 @@ function Home() {
     }
   };
 
+  const fetchSourceStatusFlow = async () => {
+    try {
+      const res = await api.get('/applications/source-status-flow');
+      setSourceStatusFlows(res.data.flows || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchApplications();
     fetchStats();
+    fetchSourceStatusFlow();
   }, [page, search, status, sortBy, order]);
 
   const statusCounts = stats?.statusCounts || {
@@ -73,6 +153,12 @@ function Home() {
 
   const conversionInterview = stats?.statusCounts.Interviewing > 0
     ? ((stats.statusCounts.Offered / stats.statusCounts.Interviewing) * 100).toFixed(1) : 0;
+
+  const sankeyData = useMemo(() => buildSankeyData(sourceStatusFlows), [sourceStatusFlows]);
+  const totalFlow = useMemo(
+    () => sourceStatusFlows.reduce((sum, row) => sum + Number(row.value || 0), 0),
+    [sourceStatusFlows]
+  );
 
   return (
     <div style={styles.layout}>
@@ -200,6 +286,28 @@ function Home() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+
+            <div style={styles.card}>
+              <div style={styles.sankeyHeader}>
+                <h3 style={styles.cardTitle}>Source to Status Flow</h3>
+                <p style={styles.sankeySub}>Total mapped applications: {totalFlow}</p>
+              </div>
+              {sankeyData.links.length === 0 ? (
+                <div style={styles.emptyState}>No source/status data yet. Add application sources to populate this chart.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={360}>
+                  <Sankey
+                    data={sankeyData}
+                    node={SankeyNode}
+                    nodePadding={34}
+                    nodeWidth={14}
+                    margin={{ top: 24, right: 180, bottom: 24, left: 180 }}
+                  >
+                    <Tooltip content={<SankeyTooltip />} />
+                  </Sankey>
+                </ResponsiveContainer>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -207,7 +315,7 @@ function Home() {
       {showAddModal && (
         <AddApplicationModal
           onClose={() => setShowAddModal(false)}
-          onSave={() => { setShowAddModal(false); fetchApplications(); fetchStats(); }}
+          onSave={() => { setShowAddModal(false); fetchApplications(); fetchStats(); fetchSourceStatusFlow(); }}
         />
       )}
     </div>
@@ -240,6 +348,12 @@ const styles = {
   metricRow: { display: 'flex', gap: '40px' },
   metricLabel: { margin: '0 0 8px', color: '#888', fontSize: '13px' },
   metricValue: { margin: 0, fontSize: '28px', fontWeight: '700' },
+  sankeyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
+  sankeySub: { margin: 0, color: '#64748b', fontSize: '13px' },
+  emptyState: { padding: '28px 12px', color: '#6b7280', fontSize: '14px' },
+  tooltipCard: { backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' },
+  tooltipTitle: { margin: 0, fontSize: '13px', fontWeight: '600', color: '#111827' },
+  tooltipValue: { margin: '4px 0 0', fontSize: '13px', color: '#475569' },
 };
 
 export default Home;

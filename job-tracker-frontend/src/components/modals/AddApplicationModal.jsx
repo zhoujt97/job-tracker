@@ -4,7 +4,7 @@ import api from '../../services/api';
 function AddApplicationModal({ onClose, onSave }) {
   const [form, setForm] = useState({
     company_name: '', job_title: '', job_description: '',
-    deadline: '', applied_date: '', priority: '', status: '',
+    source: '', deadline: '', applied_date: '', priority: '', status: '',
   });
   const [error, setError] = useState('');
 
@@ -58,6 +58,15 @@ function AddApplicationModal({ onClose, onSave }) {
         </div>
 
         <div style={styles.row}>
+          <div style={styles.field}>
+            <label style={styles.label}>Source</label>
+            <select style={styles.input} name="source" value={form.source} onChange={handleChange}>
+              <option value="">Select source</option>
+              {['LinkedIn', 'Indeed', 'Referral', 'Company Site', 'Handshake', 'Recruiter', 'Other'].map(s => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </div>
           <div style={styles.field}>
             <label style={styles.label}>Priority *</label>
             <select style={styles.input} name="priority" value={form.priority} onChange={handleChange}>

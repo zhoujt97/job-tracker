@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import api from '../services/api';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Sankey, Tooltip, ResponsiveContainer } from 'recharts';
 
 const COLORS = {
   Applied: '#1a56db',
@@ -13,12 +13,63 @@ const COLORS = {
   Planned: '#8b5cf6',
 };
 
+const STATUS_ORDER = ['Planned', 'Applied', 'Interviewing', 'Offered', 'Rejected', 'Ghosted'];
+const SOURCE_COLOR = '#64748b';
+
+const getNodeColor = (nodeName) => COLORS[nodeName] || SOURCE_COLOR;
+
+const SankeyTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const data = payload[0]?.payload;
+  if (!data?.source?.name || !data?.target?.name) return null;
+
+  return (
+    <div style={styles.tooltip}>
+      <p style={styles.tooltipTitle}>{data.source.name}{' -> '}{data.target.name}</p>
+      <p style={styles.tooltipValue}>{data.value} applications</p>
+    </div>
+  );
+};
+
+const SankeyNode = (props) => {
+  const { x, y, width, height, payload } = props;
+  const fill = getNodeColor(payload.name);
+  return <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={0.9} rx={2} />;
+};
+
+const buildSankeyData = (flows) => {
+  if (!flows?.length) return { nodes: [], links: [] };
+
+  const sourceNames = [...new Set(flows.map((row) => row.source))].sort((a, b) => a.localeCompare(b));
+  const rawStatuses = [...new Set(flows.map((row) => row.status))];
+  const statusNames = [
+    ...STATUS_ORDER.filter((status) => rawStatuses.includes(status)),
+    ...rawStatuses.filter((status) => !STATUS_ORDER.includes(status)).sort((a, b) => a.localeCompare(b)),
+  ];
+
+  const nodes = [
+    ...sourceNames.map((name) => ({ name, type: 'source' })),
+    ...statusNames.map((name) => ({ name, type: 'status' })),
+  ];
+
+  const nodeIndex = new Map(nodes.map((node, index) => [`${node.type}:${node.name}`, index]));
+  const links = flows.map((row) => ({
+    source: nodeIndex.get(`source:${row.source}`),
+    target: nodeIndex.get(`status:${row.status}`),
+    value: row.value,
+  }));
+
+  return { nodes, links };
+};
+
 function Analysis() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [flows, setFlows] = useState([]);
 
   useEffect(() => {
     fetchStats();
+    fetchSourceStatusFlow();
   }, []);
 
   const fetchStats = async () => {
@@ -30,11 +81,22 @@ function Analysis() {
     }
   };
 
+  const fetchSourceStatusFlow = async () => {
+    try {
+      const res = await api.get('/applications/source-status-flow');
+      setFlows(res.data.flows || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (!stats) return <div style={styles.loading}>Loading...</div>;
 
-  const pieData = Object.entries(stats.statusCounts)
-    .filter(([, count]) => count > 0)
-    .map(([name, value]) => ({ name, value }));
+  const sankeyData = useMemo(() => buildSankeyData(flows), [flows]);
+  const totalFlow = useMemo(
+    () => flows.reduce((sum, row) => sum + Number(row.value || 0), 0),
+    [flows]
+  );
 
   const ghostRate = stats.total > 0
     ? ((stats.statusCounts.Ghosted / stats.total) * 100).toFixed(1)
@@ -96,25 +158,25 @@ function Analysis() {
         </div>
 
         <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Status Breakdown</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                dataKey="value"
-                label={({ name, value }) => `${name}: ${value}`}
+          <div style={styles.sankeyHeader}>
+            <h3 style={styles.cardTitle}>Source to Status Flow</h3>
+            <p style={styles.sankeySub}>Total mapped applications: {totalFlow}</p>
+          </div>
+          {sankeyData.links.length === 0 ? (
+            <div style={styles.emptyState}>No source/status data yet. Add application sources to populate this chart.</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={360}>
+              <Sankey
+                data={sankeyData}
+                node={SankeyNode}
+                nodePadding={34}
+                nodeWidth={14}
+                margin={{ top: 24, right: 140, bottom: 24, left: 24 }}
               >
-                {pieData.map((entry) => (
-                  <Cell key={entry.name} fill={COLORS[entry.name] || '#ccc'} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+                <Tooltip content={<SankeyTooltip />} />
+              </Sankey>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>
@@ -138,6 +200,12 @@ const styles = {
   metricRow: { display: 'flex', gap: '40px' },
   metricLabel: { margin: '0 0 8px', color: '#888', fontSize: '13px' },
   metricValue: { margin: 0, fontSize: '28px', fontWeight: '700' },
+  sankeyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
+  sankeySub: { margin: 0, color: '#64748b', fontSize: '13px' },
+  emptyState: { padding: '28px 12px', color: '#6b7280', fontSize: '14px' },
+  tooltip: { backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' },
+  tooltipTitle: { margin: 0, fontSize: '13px', fontWeight: '600', color: '#111827' },
+  tooltipValue: { margin: '4px 0 0', fontSize: '13px', color: '#475569' },
 };
 
 export default Analysis;

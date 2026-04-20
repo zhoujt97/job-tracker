@@ -5,6 +5,7 @@ function EditApplicationModal({ application, onClose, onSave }) {
   const [form, setForm] = useState({
     company_name: application.company_name || '',
     job_title: application.job_title || '',
+    source: application.source || '',
     job_description: application.job_description || '',
     deadline: application.deadline || '',
     applied_date: application.applied_date || '',
@@ -63,6 +64,15 @@ function EditApplicationModal({ application, onClose, onSave }) {
         </div>
 
         <div style={styles.row}>
+          <div style={styles.field}>
+            <label style={styles.label}>Source</label>
+            <select style={styles.input} name="source" value={form.source} onChange={handleChange}>
+              <option value="">Select source</option>
+              {['LinkedIn', 'Indeed', 'Referral', 'Company Site', 'Handshake', 'Recruiter', 'Other'].map(s => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </div>
           <div style={styles.field}>
             <label style={styles.label}>Priority *</label>
             <select style={styles.input} name="priority" value={form.priority} onChange={handleChange}>
