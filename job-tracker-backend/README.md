@@ -20,8 +20,8 @@ npm install
 ```env
 PORT=3000
 JWT_SECRET=replace_with_a_long_random_secret
-# Optional: required only for AI routes
-# OPENAI_API_KEY=your_openai_api_key
+ADZUNA_APP_ID=your_adzuna_app_id
+ADZUNA_APP_KEY=your_adzuna_app_key
 ```
 
 3. Start in development mode:
@@ -38,12 +38,9 @@ Server URL: `http://localhost:3000`
 - Cause: `PORT` is missing from `.env`.
 - Fix: add `PORT=3000` to `.env` and restart.
 
-### 2) `Missing credentials ... OPENAI_API_KEY`
-- Cause: AI endpoints were called without `OPENAI_API_KEY`.
-- Behavior: server still runs; only AI routes fail.
-- Fix: add `OPENAI_API_KEY` to `.env` if using:
-  - `POST /api/job-matches`
-  - `POST /api/interview-prep`
+### 2) `ADZUNA_APP_ID and ADZUNA_APP_KEY must be set`
+- Cause: job matches route called without Adzuna credentials.
+- Fix: add both keys to `.env`.
 
 ### 3) `better-sqlite3` / `NODE_MODULE_VERSION` mismatch
 - Cause: dependencies were built with a different Node version.
