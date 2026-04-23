@@ -71,6 +71,27 @@ const getSavedKeySet = (userId) => {
   return new Set(rows.map((row) => row.job_key));
 };
 
+async function fetchAdzunaJobs({ query, location }) {
+  const url = new URL(`https://api.adzuna.com/v1/api/jobs/us/search/1/`);
+
+  url.searchParams.append("app_id", process.env.ADZUNA_APP_ID);
+  url.searchParams.append("app_key", process.env.ADZUNA_APP_KEY);
+  url.searchParams.append("what", query);
+  url.searchParams.append("where", location);
+  url.searchParams.append("results_per_page", 5);
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  return data.results.slice(0, 5).map(job => ({
+    title: job.title,
+    company: job.company?.display_name,
+    location: job.location?.display_name,
+    jobUrl: job.redirect_url,
+    description: (job.description || "").slice(0, 300)
+  }));
+}
+
 const findMatches = async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY) {
@@ -84,41 +105,76 @@ const findMatches = async (req, res) => {
     const combinedResumeText = [pastedResumeText, uploadedResumeText].filter(Boolean).join('\n\n');
     const resumeText = combinedResumeText.slice(0, MAX_RESUME_TEXT_LENGTH);
 
-    const prompt = `You are a job matching assistant. Based on the following resume and preferences, generate 5 realistic job matches.
+    const prompt = `You are a job search assistant.
 
-Resume:
-${resumeText || 'No resume provided'}
+    Based on this resume and preferences, generate a job search query optimized for a job API.
+    Do not include location in "query". Only include location in "location"
 
-Preferences:
-- Job Type: ${jobType || 'Any'}
-- Location: ${location || 'Any'}
-- Experience Level: ${experienceLevel || 'Any'}
+    Resume:
+    ${resumeText || 'No resume provided'}
 
-Return a JSON array of 5 job matches. Each job should have:
-- title (string)
-- company (string): MUST use real well-known tech companies only, such as Google, Microsoft, Apple, Meta, Amazon, Netflix, Spotify, Airbnb, Uber, Stripe, Figma, Notion, Slack, Twitter, LinkedIn, Adobe, Salesforce, Oracle, IBM, Intel
-- location (string)
-- jobUrl (string): direct company careers or job listing URL beginning with https://
-- matchScore (number 0-100): vary between 70-97, do not make them all the same
-- skills (array of 3-5 strings): short skill names
-- whyMatch (string): one specific sentence explaining why this is a good match
-- requiredSkills (array of 3-5 strings): short skill names
-- keywordMatch (object): 
-    - total must be between 8 and 15
-    - matched must be LESS than total (realistic, not 100%)
-    - example: { "matched": 7, "total": 10 } or { "matched": 5, "total": 12 }
-    - never make matched equal to total
+    Preferences:
+    - Job Type: ${jobType || 'Any'}
+    - Location: ${location || 'Any'}
+    - Experience Level: ${experienceLevel || 'Any'}
 
-Only return the JSON array, no other text, no markdown.`;
+    Return JSON:
+    {
+      "query": "job title",
+      "location": "city or region"
+    }`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.8,
+      temperature: 0.3,
     });
 
     const content = response.choices[0].message.content;
-    const parsedJobs = JSON.parse(content);
+
+    console.log(content)
+
+    const { query, location: queryLocation } = JSON.parse(content);
+    const finalQuery = query || jobType || "software engineer";
+    const finalLocation = queryLocation || location || "United States";
+
+    const adzunaJobs = await fetchAdzunaJobs({
+      query: finalQuery,
+      location: finalLocation
+    });
+
+    const scoringPrompt = `You are a job matching assistant.
+
+    Resume:
+    ${resumeText || 'No resume provided'}
+
+    Jobs:
+    ${JSON.stringify(adzunaJobs, null, 2)}
+
+    Return a JSON array of the SAME jobs with added fields:
+
+    - title
+    - company
+    - location
+    - jobUrl
+    - matchScore (70–97, varied)
+    - skills (3–5)
+    - requiredSkills (3–5)
+    - whyMatch (1 sentence)
+    - keywordMatch { matched, total } (8–15 total, matched < total)
+
+    Only return JSON.`;
+
+    const scoredResponse = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: scoringPrompt }],
+      temperature: 0.7,
+    });
+
+    const parsedJobs = JSON.parse(scoredResponse.choices[0].message.content);
+
+    console.log(parsedJobs)
+
     const savedKeys = getSavedKeySet(req.user.id);
     const jobs = parsedJobs.map((job) => {
       const normalized = normalizeJob(job);
