@@ -11,6 +11,15 @@ const statusColors = {
   Ghosted: '#6b7280',
 };
 
+const statusBgColors = {
+  Planned: '#F8F8F8',
+  Applied: '#F2F8FF',
+  Interviewing: '#FFF8F0',
+  Offered: '#F0FFF8',
+  Rejected: '#FFF0F3',
+  Ghosted: '#F5F5F5',
+};
+
 const priorityColors = {
   High: '#dc2626',
   Medium: '#d97706',
@@ -59,21 +68,26 @@ function ApplicationTable({ applications, onRefresh, onSort, sortBy, order }) {
                 <td style={styles.td}>{app.company_name}</td>
                 <td style={styles.td}>{app.job_title}</td>
                 <td style={styles.td}>
-                  <span style={{ color: priorityColors[app.priority] }}>
+                  <span style={{
+                   ...styles.badge,
+                  color: priorityColors[app.priority],
+                  border: '1px solid #E2E8F0',
+                  }}>
                     {app.priority}
                   </span>
                 </td>
                 <td style={styles.td}>{app.deadline || '—'}</td>
                 <td style={styles.td}>{app.applied_date || '—'}</td>
                 <td style={styles.td}>
-                  <span style={{
-                    ...styles.badge,
-                    color: statusColors[app.status],
-                    borderColor: statusColors[app.status],
-                  }}>
-                    {app.status}
-                  </span>
+                <span style={{
+                 ...styles.badge,
+                color: statusColors[app.status],
+                backgroundColor: statusBgColors[app.status],
+                }}>
+                   {app.status}
+                </span>
                 </td>
+
                 <td style={styles.td}>
                   <div style={styles.menuWrapper}>
                     <button
@@ -131,7 +145,7 @@ const styles = {
   tr: { borderBottom: '1px solid #f0f0f0' },
   td: { padding: '14px 16px', fontSize: '14px' },
   empty: { padding: '40px', textAlign: 'center', color: '#888' },
-  badge: { padding: '2px 10px', borderRadius: '20px', border: '1px solid', fontSize: '13px' },
+  badge: { padding: '4px 12px', borderRadius: '20px', fontSize: '14px' },
   menuWrapper: { position: 'relative' },
   menuBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#888' },
   menu: { position: 'absolute', right: 0, top: '100%', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, minWidth: '100px' },

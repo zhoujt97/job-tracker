@@ -204,10 +204,10 @@ export default function JobMatches() {
 
 const styles = {
   layout: { display: 'flex', minHeight: '100vh', backgroundColor: '#F3F4F6' },
-  main: { marginLeft: '220px', padding: '40px 48px', flex: 1, maxWidth: '860px' },
+  main: { marginLeft: '240px', padding: '40px 48px', flex: 1, maxWidth: '860px' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' },
-  pageTitle: { margin: '0 0 6px', fontSize: '26px', fontWeight: '700', color: '#111827', textAlign: 'left' },
-  pageSubtitle: { margin: 0, fontSize: '14px', color: '#6B7280', textAlign: 'left' },
+  pageTitle: { margin: '0 0 6px', fontSize: '32px', fontWeight: '700', color: '#101828', fontFamily: 'Inter', lineHeight: '120%', textAlign: 'left' },
+  pageSubtitle: { margin: 0, fontSize: '16px', fontWeight: '400', color: '#4A5565', fontFamily: 'Source Serif Pro', lineHeight: '140%', textAlign: 'left' },
   uploadBtn: { backgroundColor: '#2563EB', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' },
   card: { backgroundColor: '#fff', borderRadius: '14px', padding: '28px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '20px' },
   cardTitle: { margin: '0 0 18px', fontSize: '16px', fontWeight: '600', color: '#111827', textAlign: 'left' },

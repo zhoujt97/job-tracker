@@ -96,7 +96,7 @@ const styles = {
   error: { color: 'red', fontSize: '14px', marginBottom: '12px' },
   row: { display: 'flex', gap: '16px' },
   field: { flex: 1, marginBottom: '16px' },
-  label: { display: 'block', marginBottom: '6px', fontSize: '14px' },
+  label: { display: 'block', textAlign: 'left', fontSize: '14px', marginBottom: '6px', color: '#555' },
   input: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' },
   textarea: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box', height: '100px', resize: 'vertical' },
   actions: { display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' },

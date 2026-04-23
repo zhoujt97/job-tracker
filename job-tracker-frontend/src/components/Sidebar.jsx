@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Home, Star, FileText } from 'lucide-react';
 
 function Sidebar() {
   const { user, logout } = useAuth();
@@ -12,9 +13,9 @@ function Sidebar() {
   };
 
   const navItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Job Matches', path: '/job-matches' },
-    { label: 'Interview Preparation', path: '/interview-prep' },
+    { label: 'Home', path: '/', icon: Home },
+    { label: 'Job Matches', path: '/job-matches', icon: Star },
+    { label: 'Interview Preparation', path: '/interview-prep', icon: FileText },
   ];
 
   return (
@@ -25,18 +26,22 @@ function Sidebar() {
           <span style={styles.logoText}>Job Tracker</span>
         </div>
         <nav style={styles.nav}>
-          {navItems.map(item => (
-            <div
-              key={item.path}
-              style={{
-                ...styles.navItem,
-                ...(location.pathname === item.path ? styles.navItemActive : {}),
-              }}
-              onClick={() => navigate(item.path)}
-            >
-              {item.label}
-            </div>
-          ))}
+          {navItems.map(item => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.path}
+                style={{
+                  ...styles.navItem,
+                  ...(location.pathname === item.path ? styles.navItemActive : {}),
+                }}
+                onClick={() => navigate(item.path)}
+              >
+                <Icon size={16} />
+                {item.label}
+              </div>
+            );
+          })}
         </nav>
       </div>
       <div style={styles.bottom}>
@@ -53,13 +58,13 @@ function Sidebar() {
 }
 
 const styles = {
-  sidebar: { width: '220px', height: '100vh', backgroundColor: '#fff', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 16px', boxSizing: 'border-box', position: 'fixed' },
+  sidebar: { width: '240px', height: '100vh', backgroundColor: '#fff', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 16px', boxSizing: 'border-box', position: 'fixed' },
   top: { display: 'flex', flexDirection: 'column', gap: '32px' },
   logo: { display: 'flex', alignItems: 'center', gap: '10px' },
   logoIcon: { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#1a56db' },
   logoText: { fontWeight: '600', fontSize: '16px' },
   nav: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  navItem: { padding: '10px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', color: '#555' },
+  navItem: { padding: '10px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', color: '#555', display: 'flex', alignItems: 'center', gap: '10px' },
   navItemActive: { backgroundColor: '#EFF6FF', color: '#1a56db', fontWeight: '600' },
   bottom: { display: 'flex', flexDirection: 'column', gap: '8px' },
   userRow: { display: 'flex', alignItems: 'center', gap: '10px' },

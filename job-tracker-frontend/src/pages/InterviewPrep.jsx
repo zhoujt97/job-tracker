@@ -174,10 +174,10 @@ export default function InterviewPrep() {
 
 const styles = {
   layout: { display: 'flex', minHeight: '100vh', backgroundColor: '#F3F4F6' },
-  main: { marginLeft: '220px', padding: '40px 48px', flex: 1, maxWidth: '900px' },
+  main: { marginLeft: '240px', padding: '40px 48px', flex: 1, maxWidth: '900px' },
   header: { marginBottom: '28px' },
-  pageTitle: { margin: '0 0 6px', fontSize: '28px', fontWeight: '700', color: '#111827' },
-  pageSubtitle: { margin: 0, fontSize: '14px', color: '#6B7280' },
+  pageTitle: { margin: '0 0 6px', fontSize: '32px', fontWeight: '700', color: '#101828', fontFamily: 'Inter', lineHeight: '120%', textAlign: 'left' },
+  pageSubtitle: { margin: 0, fontSize: '16px', fontWeight: '400', color: '#4A5565', fontFamily: 'Source Serif Pro', lineHeight: '140%', textAlign: 'left' },
   jobCards: { display: 'flex', gap: '16px', marginBottom: '28px', flexWrap: 'wrap' },
   jobCard: { backgroundColor: '#fff', borderRadius: '12px', padding: '16px', width: '200px', cursor: 'pointer', border: '2px solid transparent', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
   jobCardActive: { border: '2px solid #2563EB' },
