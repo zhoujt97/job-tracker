@@ -49,6 +49,7 @@ export default function InterviewPrep() {
       const res = await api.post('/interview-prep/generate', {
         jobTitle: app.job_title,
         company: app.company_name,
+        jobDescription: app.job_description,
       });
       setQuestions(res.data.questions);
     } catch (err) {
