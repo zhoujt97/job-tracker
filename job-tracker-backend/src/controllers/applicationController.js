@@ -255,7 +255,26 @@ const getStats = (req, res) => {
     'SELECT COUNT(*) as count FROM applications WHERE user_id = ?'
   ).get(req.user.id);
 
-  res.json({ statusCounts, total: total.count });
+  const everInterviewed = db.prepare(`
+    SELECT COUNT(DISTINCT application_id) AS count
+    FROM application_status_events
+    WHERE user_id = ? AND to_status = 'Interviewing'
+  `).get(req.user.id);
+
+  const everOffered = db.prepare(`
+    SELECT COUNT(DISTINCT application_id) AS count
+    FROM application_status_events
+    WHERE user_id = ? AND to_status = 'Offered'
+  `).get(req.user.id);
+
+  res.json({
+    statusCounts,
+    total: total.count,
+    funnelCounts: {
+      everInterviewed: everInterviewed.count,
+      everOffered: everOffered.count,
+    },
+  });
 };
 
 const getSourceStatusFlow = (req, res) => {

@@ -102,12 +102,15 @@ function Analysis() {
     ? ((stats.statusCounts.Ghosted / stats.total) * 100).toFixed(1)
     : 0;
 
-  const conversionApplied = stats.total > 0
-    ? ((stats.statusCounts.Interviewing / stats.total) * 100).toFixed(1)
+  const everInterviewed = stats?.funnelCounts?.everInterviewed ?? stats?.statusCounts?.Interviewing ?? 0;
+  const everOffered = stats?.funnelCounts?.everOffered ?? stats?.statusCounts?.Offered ?? 0;
+
+  const applicationToInterview = stats.total > 0
+    ? ((everInterviewed / stats.total) * 100).toFixed(1)
     : 0;
 
-  const conversionInterview = stats.statusCounts.Interviewing > 0
-    ? ((stats.statusCounts.Offered / stats.statusCounts.Interviewing) * 100).toFixed(1)
+  const applicationToOffer = stats.total > 0
+    ? ((everOffered / stats.total) * 100).toFixed(1)
     : 0;
 
   return (
@@ -147,11 +150,11 @@ function Analysis() {
             <div style={styles.metricRow}>
               <div>
                 <p style={styles.metricLabel}>Applied to Interview</p>
-                <p style={styles.metricValue}>{conversionApplied}%</p>
+                <p style={styles.metricValue}>{applicationToInterview}%</p>
               </div>
               <div>
-                <p style={styles.metricLabel}>Interview to Offer</p>
-                <p style={styles.metricValue}>{conversionInterview}%</p>
+                <p style={styles.metricLabel}>Applied to Offer</p>
+                <p style={styles.metricValue}>{applicationToOffer}%</p>
               </div>
             </div>
           </div>
